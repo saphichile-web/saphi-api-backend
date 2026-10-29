@@ -10,3 +10,6 @@ def health_index (id):
 pass
 def get_recommendation_irrigacion():
 pass
+@app.post("/api/v1/telemetry/ingest/":
+def ingest telemetry(data : TelemetryData:
+pass
