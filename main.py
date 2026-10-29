@@ -4,3 +4,8 @@ app = FastAPI()
 @app.get("/api/v1/cuarteles/{id}/health-index/")
 @app.get("/api/v1/recommendation/irrigaion/")
 def ingest_telemetry):
+pass
+def health_index (id):
+pass
+def get_recommendation_irrigacion():
+pass
