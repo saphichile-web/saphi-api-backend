@@ -1,6 +1,10 @@
 from fastapi import FastAPI, HTTPException
 import os
+import logging
 import psycopg
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("saphi-api")
 
 app = FastAPI(
     title="SAPHI Chile API",
@@ -50,9 +54,23 @@ def db_health():
             "platform": "SAPHI Chile"
         }
 
-    except Exception:
+    except psycopg.OperationalError as error:
+        logger.error(
+            "SAPHI PostgreSQL: error de conexión. Tipo: %s. SQLSTATE: %s",
+            type(error).__name__,
+            getattr(error, "sqlstate", None)
+        )
         raise HTTPException(
             status_code=503,
-            detail="No se pudo conectar a PostgreSQL"
+            detail="Error de conexión con PostgreSQL"
         )
 
+    except Exception as error:
+        logger.error(
+            "SAPHI PostgreSQL: error de configuración o ejecución. Tipo: %s",
+            type(error).__name__
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="Error interno al verificar PostgreSQL"
+        )
