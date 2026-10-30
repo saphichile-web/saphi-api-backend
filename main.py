@@ -1,12 +1,15 @@
-
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 import os
-DEVICE_CONNECTION_STRING = os.getenv("DEVICE_CONNECTION_STRING")
+import psycopg
+
 app = FastAPI(
     title="SAPHI Chile API",
     description="Plataforma AgTech de agricultura regenerativa",
     version="1.0.0"
 )
+
+DEVICE_CONNECTION_STRING = os.getenv("DEVICE_CONNECTION_STRING")
+
 
 @app.get("/")
 async def root():
@@ -16,18 +19,18 @@ async def root():
         "version": "1.0.0"
     }
 
+
 @app.get("/health")
 async def health():
     return {
         "status": "healthy",
         "service": "saphi-api-backend"
     }
-    @app.get("/db-health")
+
+
+@app.get("/db-health")
 def db_health():
     try:
-        import psycopg
-        import os
-
         with psycopg.connect(
             host=os.environ["DB_HOST"],
             dbname=os.environ["DB_NAME"],
@@ -48,7 +51,6 @@ def db_health():
         }
 
     except Exception:
-        from fastapi import HTTPException
         raise HTTPException(
             status_code=503,
             detail="No se pudo conectar a PostgreSQL"
