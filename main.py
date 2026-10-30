@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from fastapi import FastAPI
 app = FastAPI() 
-class TelemetryData(BaseModel)
+class TelemetryData(BaseModel):
 pass
 @app.post("/api/v1/telemetry/ingest/")
 def ingest_telemetry(data:TelemetryData):
