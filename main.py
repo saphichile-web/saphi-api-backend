@@ -1,18 +1,24 @@
-from pydantic import BaseModel
+
 from fastapi import FastAPI
-app = FastAPI() 
-class MiClase:
-    pass
-class TelemetryData(BaseModel):
-    pass
-@app.post("/api/v1/telemetry/ingest/")
-def ingest_telemetry(data:TelemetryData):
-    pass
-@app.get("/api/v1/cuarteles/{id}/health-index/")
-def health_index(id: str):
-    pass
-@app.get("/api/v1/recommendation/irrigaion/")
-def get_recommendation_irrigacion():
-    pass
-def get_recommendation_irrigacion():
-    pass
+
+app = FastAPI(
+    title="SAPHI Chile API",
+    description="Plataforma AgTech de agricultura regenerativa",
+    version="1.0.0"
+)
+
+@app.get("/")
+async def root():
+    return {
+        "plataforma": "SAPHI Chile",
+        "estado": "operativa",
+        "version": "1.0.0"
+    }
+
+@app.get("/health")
+async def health():
+    return {
+        "status": "healthy",
+        "service": "saphi-api-backend"
+    }
+
