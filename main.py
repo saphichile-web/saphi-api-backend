@@ -433,3 +433,86 @@ def obtener_diagnostico_agronomico():
             status_code=503,
             detail="No fue posible consultar los diagnósticos agronómicos"
         )
+
+# ============================================================
+# SAPHI CHILE - MÓDULO DE ANÁLISIS FISICOQUÍMICO DEL SUELO
+# ============================================================
+
+@app.get("/analisis-fisicoquimico")
+def obtener_analisis_fisicoquimico():
+    """
+    Consulta los análisis fisicoquímicos registrados en PostgreSQL.
+    Identifica los datos demostrativos para evitar confundirlos
+    con resultados reales de laboratorio.
+    """
+
+    try:
+        conexion = conectar_postgresql()
+
+        with conexion.cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    a.id,
+                    a.cuartel_id,
+                    c.nombre AS nombre_cuartel,
+                    a.fecha,
+                    a.ph_agua,
+                    a.conductividad_ds_m,
+                    a.materia_organica_pct,
+                    a.nitrogeno_mg_kg,
+                    a.fosforo_mg_kg,
+                    a.potasio_mg_kg,
+                    a.densidad_aparente_g_cm3,
+                    a.profundidad_muestreo_cm,
+                    a.laboratorio,
+                    a.metodo_analitico,
+                    a.observaciones,
+                    a.tipo_dato
+                FROM public.analisis_fisicoquimico AS a
+                LEFT JOIN public.cuarteles AS c
+                    ON c.id = a.cuartel_id
+                ORDER BY a.fecha DESC NULLS LAST, a.id DESC;
+            """)
+
+            filas = cursor.fetchall()
+
+        conexion.close()
+
+        analisis = []
+
+        for fila in filas:
+            analisis.append({
+                "id": fila[0],
+                "cuartel_id": fila[1],
+                "nombre_cuartel": fila[2],
+                "fecha": fila[3].isoformat() if fila[3] else None,
+                "ph_agua": float(fila[4]) if fila[4] is not None else None,
+                "conductividad_ds_m": float(fila[5]) if fila[5] is not None else None,
+                "materia_organica_pct": float(fila[6]) if fila[6] is not None else None,
+                "nitrogeno_mg_kg": float(fila[7]) if fila[7] is not None else None,
+                "fosforo_mg_kg": float(fila[8]) if fila[8] is not None else None,
+                "potasio_mg_kg": float(fila[9]) if fila[9] is not None else None,
+                "densidad_aparente_g_cm3": float(fila[10]) if fila[10] is not None else None,
+                "profundidad_muestreo_cm": float(fila[11]) if fila[11] is not None else None,
+                "laboratorio": fila[12],
+                "metodo_analitico": fila[13],
+                "observaciones": fila[14],
+                "tipo_dato": fila[15]
+            })
+
+        return {
+            "plataforma": "SAPHI Chile",
+            "modulo": "Análisis fisicoquímico del suelo",
+            "total_analisis": len(analisis),
+            "analisis": analisis
+        }
+
+    except Exception:
+        logger.exception(
+            "Error consultando análisis fisicoquímicos"
+        )
+
+        raise HTTPException(
+            status_code=503,
+            detail="No fue posible consultar los análisis fisicoquímicos"
+        )
