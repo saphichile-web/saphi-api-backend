@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAPHI Chile | Dashboard Agronómico</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f7f5;
+            color: #24372c;
+        }
+
+        header {
+            background: #214d3b;
+            color: white;
+            padding: 25px 35px;
+        }
+
+        header h1 { margin: 0; }
+
+        header p {
+            margin-bottom: 0;
+            color: #d5e7db;
+        }
+
+        main {
+            max-width: 1200px;
+            margin: auto;
+            padding: 30px;
+        }
+
+        .titulo {
+            margin-bottom: 25px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns:
+                repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 3px 12px #00000012;
+        }
+
+        .card h3 {
+            color: #52705e;
+            font-size: 15px;
+            margin-top: 0;
+        }
+
+        .valor {
+            font-size: 30px;
+            font-weight: bold;
+            color: #214d3b;
+        }
+
+        .seccion {
+            margin-top: 30px;
+        }
+
+        .detalle {
+            line-height: 1.9;
+        }
+
+        .estado {
+            display: inline-block;
+            padding: 8px 14px;
+            border-radius: 20px;
+            background: #e0f2e5;
+            color: #20683b;
+        }
+
+        .nota {
+            color: #65756a;
+            font-size: 13px;
+        }
+
+        button {
+            background: #214d3b;
+            color: white;
+            border: 0;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>SAPHI CHILE</h1>
+    <p>
+        Plataforma de Inteligencia Agronómica
+        y Regeneración de Suelos
+    </p>
+</header>
+
+<main>
+
+    <div class="titulo">
+        <h2>Dashboard Agronómico</h2>
+        <p>Monitoreo de suelo, sensores IoT y predios agrícolas</p>
+        <button onclick="cargarDatos()">Actualizar datos</button>
+        <p id="conexion" class="nota">Conectando con Azure...</p>
+    </div>
+
+    <div class="grid">
+
+        <div class="card">
+            <h3>Empresas registradas</h3>
+            <div class="valor" id="empresas">--</div>
+        </div>
+
+        <div class="card">
+            <h3>Predios agrícolas</h3>
+            <div class="valor" id="predios">--</div>
+        </div>
+
+        <div class="card">
+            <h3>Sensores IoT</h3>
+            <div class="valor" id="sensores">--</div>
+        </div>
+
+        <div class="card">
+            <h3>Humedad del suelo a 30 cm</h3>
+            <div class="valor" id="humedad">--</div>
+        </div>
+
+        <div class="card">
+            <h3>Temperatura del suelo</h3>
+            <div class="valor" id="temperatura">--</div>
+        </div>
+
+        <div class="card">
+            <h3>Conductividad eléctrica</h3>
+            <div class="valor" id="conductividad">--</div>
+        </div>
+
+    </div>
+
+    <div class="grid seccion">
+
+        <div class="card">
+            <h3>Información del predio</h3>
+            <div class="detalle">
+                <strong>Empresa:</strong>
+                <span id="empresa_nombre">--</span><br>
+
+                <strong>Predio:</strong>
+                <span id="predio_nombre">--</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Monitoreo IoT</h3>
+            <div class="detalle">
+                <strong>Sensor:</strong>
+                <span id="sensor_codigo">--</span><br>
+
+                <strong>Profundidad:</strong>
+                <span id="profundidad">--</span><br>
+
+                <strong>Estado registrado:</strong>
+                <span id="sensor_estado">--</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Última medición</h3>
+            <div class="detalle">
+                <span class="estado">Datos demostrativos</span>
+                <p id="fecha_medicion">--</p>
+            </div>
+        </div>
+
+    </div>
+
+    <p class="nota">
+        SAPHI Chile SpA | Demostración funcional.
+        Los registros actuales corresponden a datos de prueba.
+        No representan mediciones IoT en tiempo real.
+    </p>
+
+</main>
+
+<script>
+
+const API = window.location.origin;
+
+function mostrar(id, valor) {
+    document.getElementById(id).textContent =
+        valor ?? "--";
+}
+
+async function consultar(ruta) {
+    const respuesta = await fetch(API + ruta);
+
+    if (!respuesta.ok) {
+        throw new Error(
+            "Error HTTP " + respuesta.status + " en " + ruta
+        );
+    }
+
+    return respuesta.json();
+}
+
+async function cargarDatos() {
+
+    mostrar("conexion", "Consultando PostgreSQL mediante Azure...");
+
+    try {
+
+        const [
+            empresas,
+            predios,
+            sensores,
+            telemetria
+        ] = await Promise.all([
+            consultar("/empresas"),
+            consultar("/predios"),
+            consultar("/sensores"),
+            consultar("/telemetria")
+        ]);
+
+        mostrar("empresas", empresas.total_empresas);
+        mostrar("predios", predios.total_predios);
+        mostrar("sensores", sensores.total_sensores);
+
+        const empresa = empresas.empresas?.[0];
+        const predio = predios.predios?.[0];
+        const sensor = sensores.sensores?.[0];
+        const medicion = telemetria.mediciones?.[0];
+
+        mostrar("empresa_nombre", empresa?.nombre);
+        mostrar("predio_nombre", predio?.nombre);
+
+        mostrar("sensor_codigo", sensor?.codigo_sensor);
+
+        mostrar(
+            "profundidad",
+            sensor?.profundidad_cm != null
+                ? sensor.profundidad_cm + " cm"
+                : "--"
+        );
+
+        mostrar("sensor_estado", sensor?.estado);
+
+        mostrar(
+            "humedad",
+            medicion?.humedad_30cm != null
+                ? medicion.humedad_30cm + " %"
+                : "--"
+        );
+
+        mostrar(
+            "temperatura",
+            medicion?.temperatura_suelo != null
+                ? medicion.temperatura_suelo + " °C"
+                : "--"
+        );
+
+        mostrar(
+            "conductividad",
+            medicion?.conductividad_electrica != null
+                ? medicion.conductividad_electrica
+                : "--"
+        );
+
+        mostrar(
+            "fecha_medicion",
+            medicion?.timestamp
+                ? new Date(medicion.timestamp).toLocaleString("es-CL")
+                : "Sin mediciones"
+        );
+
+        mostrar(
+            "conexion",
+            "Consulta completada correctamente."
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        mostrar(
+            "conexion",
+            "No fue posible cargar los datos: " + error.message
+        );
+    }
+}
+
+cargarDatos();
+
+</script>
+
+</body>
+</html>
