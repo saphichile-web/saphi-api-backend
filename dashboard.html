@@ -103,6 +103,13 @@
         .grafico .mensaje-grafico { font-size: 13px; color: #65756a; }
         .grafico .eje { fill: #65756a; font-size: 11px; }
         .grafico .rejilla { stroke: #e6ede8; stroke-width: 1; }
+        /* Alertas ilustrativas; no constituyen recomendaciones de manejo */
+        .alertas { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px; }
+        .alerta { border-left:6px solid #87958a; }
+        .alerta.normal { border-left-color:#23804c; background:#f3fbf5; }
+        .alerta.precaucion { border-left-color:#d49a20; background:#fffaf0; }
+        .alerta.critica { border-left-color:#c44545; background:#fff5f5; }
+        .alerta .estado-alerta { font-weight:bold; margin:10px 0; }
     </style>
 </head>
 
@@ -196,6 +203,28 @@
 
     </div>
 
+
+    <section class="seccion" aria-labelledby="titulo-alertas">
+        <h2 id="titulo-alertas">Alertas agronómicas · Simulación</h2>
+        <p class="nota">Evaluación de la última medición con umbrales ilustrativos. No representa un diagnóstico ni una recomendación de riego. Los rangos deben calibrarse según cultivo, suelo y sensor.</p>
+        <div class="alertas" aria-live="polite">
+            <div class="card alerta" id="alerta_humedad">
+                <h3>Humedad del suelo a 30 cm</h3>
+                <div class="estado-alerta" id="estado_alerta_humedad">Esperando datos...</div>
+                <p class="nota" id="detalle_alerta_humedad">--</p>
+            </div>
+            <div class="card alerta" id="alerta_temperatura">
+                <h3>Temperatura del suelo</h3>
+                <div class="estado-alerta" id="estado_alerta_temperatura">Esperando datos...</div>
+                <p class="nota" id="detalle_alerta_temperatura">--</p>
+            </div>
+            <div class="card alerta" id="alerta_conductividad">
+                <h3>Conductividad eléctrica</h3>
+                <div class="estado-alerta" id="estado_alerta_conductividad">Sin evaluación</div>
+                <p class="nota">Unidad y método de medición pendientes de confirmar. No se asignan umbrales.</p>
+            </div>
+        </div>
+    </section>
 
     <section class="seccion" aria-labelledby="titulo-historial">
         <h2 id="titulo-historial">Evolución histórica del suelo</h2>
@@ -319,6 +348,34 @@ async function cargarHistorial() {
     }
 }
 
+// Rangos exclusivamente demostrativos. Ajustar después de la validación en terreno.
+const UMBRALES_DEMO = {
+    humedad_30cm: {minAlerta: 25, minPrecaucion: 27, maxPrecaucion: 33, maxAlerta: 35, unidad: "%"},
+    temperatura_suelo: {minAlerta: 5, minPrecaucion: 10, maxPrecaucion: 25, maxAlerta: 30, unidad: "°C"}
+};
+
+function evaluarUmbral(valor, u) {
+    if (valor == null || !Number.isFinite(Number(valor))) return {clase:"", estado:"Sin datos"};
+    const n = Number(valor);
+    if (n < u.minAlerta || n > u.maxAlerta) return {clase:"critica", estado:"🔴 Alerta demostrativa"};
+    if (n < u.minPrecaucion || n > u.maxPrecaucion) return {clase:"precaucion", estado:"🟡 Precaución demostrativa"};
+    return {clase:"normal", estado:"🟢 Dentro del rango demostrativo"};
+}
+
+function actualizarAlertas(medicion) {
+    for (const [campo, sufijo] of [["humedad_30cm","humedad"],["temperatura_suelo","temperatura"]]) {
+        const u = UMBRALES_DEMO[campo];
+        const valor = medicion?.[campo];
+        const resultado = evaluarUmbral(valor, u);
+        const tarjeta = document.getElementById("alerta_" + sufijo);
+        tarjeta.className = "card alerta " + resultado.clase;
+        mostrar("estado_alerta_" + sufijo, resultado.estado);
+        mostrar("detalle_alerta_" + sufijo,
+            (valor == null ? "Sin medición" : `Valor: ${valor} ${u.unidad}`) +
+            ` · Rango normal ilustrativo: ${u.minPrecaucion}–${u.maxPrecaucion} ${u.unidad}`);
+    }
+}
+
 async function cargarDatos() {
 
     mostrar("conexion", "Consultando PostgreSQL mediante Azure...");
@@ -346,6 +403,7 @@ async function cargarDatos() {
         const predio = predios.predios?.[0];
         const sensor = sensores.sensores?.[0];
         const medicion = telemetria.mediciones?.[0];
+        actualizarAlertas(medicion);
 
         mostrar("empresa_nombre", empresa?.nombre);
         mostrar("predio_nombre", predio?.nombre);
@@ -397,6 +455,7 @@ async function cargarDatos() {
     } catch (error) {
 
         console.error(error);
+        actualizarAlertas(null);
 
         mostrar(
             "conexion",
