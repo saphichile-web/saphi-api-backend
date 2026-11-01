@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SAPHI Chile | Dashboard Agronómico</title>
 
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
     <style>
         * { box-sizing: border-box; }
 
@@ -131,6 +132,8 @@
         .acciones-reporte { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
         .btn-secundario { background:#edf3ef; color:#214d3b; border:1px solid #b8d0be; }
         .aviso-demo { border-left:4px solid #bc9148; padding:12px 16px; background:#fff9ec; font-size:13px; line-height:1.6; }
+        #mapa_portezuelo { height: 430px; width: 100%; border-radius: 10px; background: #e6ede8; }
+        .mapa-controles { display:flex; flex-wrap:wrap; gap:10px; margin:12px 0; }
         @media print {
             .nav-modulos, button, .acciones-reporte, #conexion { display:none !important; }
             body { background:white; }
@@ -335,7 +338,19 @@
 
     <section class="seccion" id="territorio" aria-labelledby="titulo-territorio">
         <h2 id="titulo-territorio">Territorio y análisis geoespacial</h2>
-        <div class="card modulo-card"><span class="etiqueta-pendiente">Próxima integración</span><h3>Cartografía de predios y cuarteles</h3><p class="nota">Espacio reservado para polígonos georreferenciados, imágenes satelitales y análisis espacial con PostGIS. Aún no hay geometrías ni capas verificadas para mostrar.</p></div>
+        <div class="card modulo-card">
+            <span class="etiqueta-pendiente etiqueta-activo">Visor geográfico demostrativo</span>
+            <h3>Vista satelital · Portezuelo, Valle del Itata</h3>
+            <p class="nota">Ubicación aproximada del centro urbano de Portezuelo, Región de Ñuble. El visor permite explorar el paisaje agrícola; no representa un predio, un viñedo ni un cuartel identificado o autorizado.</p>
+            <div class="mapa-controles">
+                <button type="button" onclick="cambiarCapaMapa('satelite')">Vista satelital</button>
+                <button type="button" class="btn-secundario" onclick="cambiarCapaMapa('calles')">Mapa de referencia</button>
+                <button type="button" class="btn-secundario" onclick="centrarPortezuelo()">Centrar en Portezuelo</button>
+            </div>
+            <div id="mapa_portezuelo" role="region" aria-label="Mapa interactivo del sector de Portezuelo"></div>
+            <p id="estado_mapa" class="nota" role="status">Cargando visor geográfico...</p>
+            <p class="aviso-demo"><strong>Uso demostrativo:</strong> la imagen es una capa cartográfica de referencia provista por terceros, no un producto Sentinel-2 ni un índice NDVI. No se han incorporado límites prediales, geometrías PostGIS o datos de productores. La cobertura y fecha de captura de las imágenes pueden variar.</p>
+        </div>
     </section>
 
     <section class="seccion" id="informes" aria-labelledby="titulo-informes">
@@ -357,6 +372,7 @@
 
 </main>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
 
 const API = window.location.origin;
@@ -629,6 +645,49 @@ async function cargarDatos() {
         );
     }
 }
+
+
+// Visor cartográfico de referencia: no consulta ni modifica PostgreSQL.
+const CENTRO_PORTEZUELO = [-36.53, -72.43];
+let mapaPortezuelo = null;
+let capaActual = null;
+const capasMapa = {};
+function iniciarMapa() {
+    const estado = document.getElementById("estado_mapa");
+    if (typeof L === "undefined") {
+        estado.textContent = "No se pudo cargar el visor. Comprueba la conexión a Internet o las restricciones de red.";
+        return;
+    }
+    try {
+        mapaPortezuelo = L.map("mapa_portezuelo", {scrollWheelZoom: false}).setView(CENTRO_PORTEZUELO, 12);
+        capasMapa.satelite = L.tileLayer(
+            "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+            {maxZoom: 18, attribution: "Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community"}
+        );
+        capasMapa.calles = L.tileLayer(
+            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            {maxZoom: 19, attribution: "&copy; OpenStreetMap contributors"}
+        );
+        cambiarCapaMapa("satelite");
+        L.circleMarker(CENTRO_PORTEZUELO, {
+            radius: 7, color: "#214d3b", fillColor: "#ffffff", fillOpacity: 0.9, weight: 2
+        }).addTo(mapaPortezuelo).bindPopup("Portezuelo (referencia geográfica aproximada). No corresponde a un predio piloto.");
+        estado.textContent = "Visor iniciado · ubicación de referencia aproximada · sin límites prediales.";
+        setTimeout(() => mapaPortezuelo.invalidateSize(), 250);
+    } catch (error) {
+        console.error("Error iniciando mapa:", error);
+        estado.textContent = "No fue posible inicializar el mapa: " + error.message;
+    }
+}
+function cambiarCapaMapa(tipo) {
+    if (!mapaPortezuelo || !capasMapa[tipo]) return;
+    if (capaActual) mapaPortezuelo.removeLayer(capaActual);
+    capaActual = capasMapa[tipo].addTo(mapaPortezuelo);
+}
+function centrarPortezuelo() {
+    if (mapaPortezuelo) mapaPortezuelo.setView(CENTRO_PORTEZUELO, 12);
+}
+window.addEventListener("load", iniciarMapa);
 
 cargarDatos();
 
