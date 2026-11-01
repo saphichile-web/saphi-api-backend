@@ -358,3 +358,78 @@ def historial_telemetria():
             status_code=503,
             detail="No fue posible consultar el historial de telemetría"
         )
+
+# ============================================================
+# SAPHI CHILE SpA
+# MÓDULO DE DIAGNÓSTICO AGRONÓMICO
+# ============================================================
+
+@app.get("/diagnostico-agronomico")
+def obtener_diagnostico_agronomico():
+
+    try:
+        conexion = conectar_postgresql()
+
+        with conexion.cursor() as cursor:
+
+            cursor.execute("""
+                SELECT
+                    d.id,
+                    d.predio_id,
+                    p.nombre AS nombre_predio,
+                    d.nombre_cuartel,
+                    d.cultivo,
+                    d.variedad,
+                    d.textura_suelo,
+                    d.profundidad_efectiva_cm,
+                    d.observaciones,
+                    d.fecha_registro
+                FROM public.diagnostico_agronomico AS d
+                LEFT JOIN public.predios AS p
+                    ON p.id = d.predio_id
+                ORDER BY d.fecha_registro DESC, d.id DESC;
+            """)
+
+            filas = cursor.fetchall()
+
+        conexion.close()
+
+        diagnosticos = []
+
+        for fila in filas:
+
+            diagnosticos.append({
+                "id": fila[0],
+                "predio_id": fila[1],
+                "nombre_predio": fila[2],
+                "nombre_cuartel": fila[3],
+                "cultivo": fila[4],
+                "variedad": fila[5],
+                "textura_suelo": fila[6],
+                "profundidad_efectiva_cm": (
+                    float(fila[7]) if fila[7] is not None else None
+                ),
+                "observaciones": fila[8],
+                "fecha_registro": (
+                    fila[9].isoformat() if fila[9] is not None else None
+                )
+            })
+
+        return {
+            "plataforma": "SAPHI Chile",
+            "modulo": "Diagnóstico agronómico",
+            "tipo_datos": "demostrativos",
+            "total_diagnosticos": len(diagnosticos),
+            "diagnosticos": diagnosticos
+        }
+
+    except Exception:
+
+        logger.exception(
+            "Error consultando diagnósticos agronómicos"
+        )
+
+        raise HTTPException(
+            status_code=503,
+            detail="No fue posible consultar los diagnósticos agronómicos"
+        )
