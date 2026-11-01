@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -110,13 +110,43 @@
         .alerta.precaucion { border-left-color:#d49a20; background:#fffaf0; }
         .alerta.critica { border-left-color:#c44545; background:#fff5f5; }
         .alerta .estado-alerta { font-weight:bold; margin:10px 0; }
+
+        /* Navegación y módulos del piloto integral */
+        .topbar { display:flex; justify-content:space-between; align-items:center; gap:15px; flex-wrap:wrap; }
+        .pilot-tag { font-size:12px; background:#d9eadd; color:#214d3b; padding:8px 12px; border-radius:20px; font-weight:bold; }
+        .nav-modulos { display:flex; flex-wrap:wrap; gap:9px; margin:0 0 24px; }
+        .nav-modulos a { display:inline-block; padding:10px 13px; border-radius:8px; background:white; color:#214d3b; border:1px solid #d9e7dc; text-decoration:none; font-size:14px; font-weight:bold; }
+        .nav-modulos a:hover, .nav-modulos a:focus { background:#e0f2e5; }
+        section[id] { scroll-margin-top:20px; }
+        .diagnostico-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; }
+        .diagnostico-campo { background:#f5f9f6; border:1px solid #e1eae3; border-radius:9px; padding:15px; }
+        .diagnostico-campo small { display:block; color:#64766a; margin-bottom:7px; }
+        .diagnostico-campo strong { display:block; overflow-wrap:anywhere; }
+        .modulos-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:18px; }
+        .modulo-card { border-top:4px solid #93b29b; }
+        .modulo-card h3 { font-size:17px; color:#214d3b; }
+        .modulo-card p { line-height:1.6; }
+        .etiqueta-pendiente { font-size:12px; display:inline-block; background:#f0f3f0; color:#57665b; border-radius:12px; padding:5px 10px; }
+        .etiqueta-activo { background:#e0f2e5; color:#20683b; }
+        .acciones-reporte { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+        .btn-secundario { background:#edf3ef; color:#214d3b; border:1px solid #b8d0be; }
+        .aviso-demo { border-left:4px solid #bc9148; padding:12px 16px; background:#fff9ec; font-size:13px; line-height:1.6; }
+        @media print {
+            .nav-modulos, button, .acciones-reporte, #conexion { display:none !important; }
+            body { background:white; }
+            header { background:white; color:#214d3b; border-bottom:2px solid #214d3b; }
+            header p { color:#214d3b; }
+            main { max-width:none; padding:10px; }
+            .card { box-shadow:none; border:1px solid #dfe7e1; break-inside:avoid; }
+            section { break-inside:avoid; }
+        }
     </style>
 </head>
 
 <body>
 
 <header>
-    <h1>SAPHI CHILE</h1>
+    <div class="topbar"><h1>SAPHI CHILE</h1><span class="pilot-tag">PILOTO DEMOSTRATIVO · 2026</span></div>
     <p>
         Plataforma de Inteligencia Agronómica
         y Regeneración de Suelos
@@ -125,7 +155,16 @@
 
 <main>
 
-    <div class="titulo">
+    <nav class="nav-modulos" aria-label="Módulos SAPHI Chile">
+        <a href="#inicio">Inicio</a>
+        <a href="#predios">Mis predios</a>
+        <a href="#monitoreo">Monitoreo IoT</a>
+        <a href="#suelo">Inteligencia del suelo</a>
+        <a href="#territorio">Territorio</a>
+        <a href="#informes">Informes</a>
+    </nav>
+
+    <div class="titulo" id="inicio">
         <h2>Dashboard Agronómico</h2>
         <p>Monitoreo de suelo, sensores IoT y predios agrícolas</p>
         <button onclick="cargarDatos()">Actualizar datos</button>
@@ -166,7 +205,7 @@
 
     </div>
 
-    <div class="grid seccion">
+    <div class="grid seccion" id="predios">
 
         <div class="card">
             <h3>Información del predio</h3>
@@ -204,7 +243,7 @@
     </div>
 
 
-    <section class="seccion" aria-labelledby="titulo-alertas">
+    <section class="seccion" id="monitoreo" aria-labelledby="titulo-alertas">
         <h2 id="titulo-alertas">Alertas agronómicas · Simulación</h2>
         <p class="nota">Evaluación de la última medición con umbrales ilustrativos. No representa un diagnóstico ni una recomendación de riego. Los rangos deben calibrarse según cultivo, suelo y sensor.</p>
         <div class="alertas" aria-live="polite">
@@ -248,6 +287,47 @@
             </div>
         </div>
     </section>
+
+
+    <section class="seccion" id="suelo" aria-labelledby="titulo-suelo">
+        <h2 id="titulo-suelo">Inteligencia del suelo</h2>
+        <p class="nota">Diagnóstico agronómico del predio y estructura para futuros análisis de laboratorio y seguimiento regenerativo.</p>
+        <div class="card">
+            <h3>Diagnóstico agronómico del predio</h3>
+            <p class="nota" id="estado_diagnostico" role="status">Consultando PostgreSQL...</p>
+            <div class="diagnostico-grid">
+                <div class="diagnostico-campo"><small>Predio</small><strong id="diag_predio">--</strong></div>
+                <div class="diagnostico-campo"><small>Cuartel</small><strong id="diag_cuartel">--</strong></div>
+                <div class="diagnostico-campo"><small>Cultivo</small><strong id="diag_cultivo">--</strong></div>
+                <div class="diagnostico-campo"><small>Variedad</small><strong id="diag_variedad">--</strong></div>
+                <div class="diagnostico-campo"><small>Textura del suelo</small><strong id="diag_textura">--</strong></div>
+                <div class="diagnostico-campo"><small>Profundidad efectiva</small><strong id="diag_profundidad">--</strong></div>
+            </div>
+            <p class="detalle"><strong>Observaciones:</strong> <span id="diag_observaciones">--</span></p>
+            <p class="nota">Registro: <span id="diag_fecha">--</span> · Datos demostrativos</p>
+        </div>
+        <div class="modulos-grid seccion">
+            <div class="card modulo-card"><span class="etiqueta-pendiente">Pendiente de integración</span><h3>Análisis físico-químico</h3><p class="nota">pH, materia orgánica, N, P, K, densidad aparente y parámetros de laboratorio. Sin resultados disponibles todavía.</p></div>
+            <div class="card modulo-card"><span class="etiqueta-pendiente">Pendiente de integración</span><h3>Biología y regeneración</h3><p class="nota">Cobertura vegetal, indicadores biológicos, carbono orgánico y evolución del suelo. Requiere protocolos y mediciones validadas.</p></div>
+            <div class="card modulo-card"><span class="etiqueta-pendiente">Diseño preliminar</span><h3>Gestión hídrica</h3><p class="nota">El historial de humedad a 30 cm se muestra en Monitoreo IoT. Las decisiones de riego requieren calibración y datos adicionales.</p></div>
+        </div>
+    </section>
+
+    <section class="seccion" id="territorio" aria-labelledby="titulo-territorio">
+        <h2 id="titulo-territorio">Territorio y análisis geoespacial</h2>
+        <div class="card modulo-card"><span class="etiqueta-pendiente">Próxima integración</span><h3>Cartografía de predios y cuarteles</h3><p class="nota">Espacio reservado para polígonos georreferenciados, imágenes satelitales y análisis espacial con PostGIS. Aún no hay geometrías ni capas verificadas para mostrar.</p></div>
+    </section>
+
+    <section class="seccion" id="informes" aria-labelledby="titulo-informes">
+        <h2 id="titulo-informes">Informes técnicos</h2>
+        <div class="card">
+            <h3>Ficha demostrativa del predio</h3>
+            <p class="nota">Genera una vista imprimible del dashboard y del diagnóstico consultado. No constituye un informe técnico validado ni una certificación ESG.</p>
+            <div class="acciones-reporte"><button type="button" onclick="window.print()">Imprimir / guardar como PDF</button><span class="etiqueta-pendiente">Reporte automático avanzado: en desarrollo</span></div>
+        </div>
+    </section>
+
+    <p class="aviso-demo"><strong>Alcance del piloto:</strong> los datos agrícolas mostrados son demostrativos. No representan mediciones IoT en tiempo real, recomendaciones de manejo ni resultados de laboratorio certificados.</p>
 
     <p class="nota">
         SAPHI Chile SpA | Demostración funcional.
@@ -376,10 +456,40 @@ function actualizarAlertas(medicion) {
     }
 }
 
+
+// Recupera el diagnóstico real de la base de datos, cuyos registros actuales son demostrativos.
+async function cargarDiagnostico() {
+    mostrar("estado_diagnostico", "Consultando diagnóstico agronómico...");
+    try {
+        const resultado = await consultar("/diagnostico-agronomico");
+        const registros = Array.isArray(resultado.diagnosticos) ? resultado.diagnosticos : [];
+        const d = registros[0];
+        if (!d) {
+            mostrar("estado_diagnostico", "No hay diagnósticos registrados.");
+            for (const id of ["diag_predio","diag_cuartel","diag_cultivo","diag_variedad","diag_textura","diag_profundidad","diag_observaciones","diag_fecha"]) mostrar(id,"--");
+            return;
+        }
+        mostrar("diag_predio", d.nombre_predio);
+        mostrar("diag_cuartel", d.nombre_cuartel);
+        mostrar("diag_cultivo", d.cultivo);
+        mostrar("diag_variedad", d.variedad);
+        mostrar("diag_textura", d.textura_suelo);
+        mostrar("diag_profundidad", d.profundidad_efectiva_cm != null ? d.profundidad_efectiva_cm + " cm" : "--");
+        mostrar("diag_observaciones", d.observaciones);
+        const fecha = d.fecha_registro ? new Date(d.fecha_registro) : null;
+        mostrar("diag_fecha", fecha && !Number.isNaN(fecha.getTime()) ? fecha.toLocaleString("es-CL") : "--");
+        mostrar("estado_diagnostico", `${registros.length} registro(s) consultado(s) · Datos demostrativos`);
+    } catch (error) {
+        console.error("Error consultando diagnóstico agronómico:", error);
+        mostrar("estado_diagnostico", "Diagnóstico no disponible: " + error.message);
+    }
+}
+
 async function cargarDatos() {
 
     mostrar("conexion", "Consultando PostgreSQL mediante Azure...");
     cargarHistorial();
+    cargarDiagnostico();
 
     try {
 
