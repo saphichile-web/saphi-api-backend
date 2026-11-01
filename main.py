@@ -4,11 +4,15 @@ import os
 import logging
 import psycopg
 
-# Configuración de registros
+# ==================================================
+# SAPHI CHILE - PLATAFORMA AGTECH
+# Backend FastAPI + PostgreSQL + Microsoft Azure
+# Versión 1.0.0
+# ==================================================
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("saphi-api")
 
-# Aplicación SAPHI Chile
 app = FastAPI(
     title="SAPHI Chile API",
     description="Plataforma AgTech de agricultura regenerativa",
@@ -19,7 +23,10 @@ app = FastAPI(
 DEVICE_CONNECTION_STRING = os.getenv("DEVICE_CONNECTION_STRING")
 
 
-# Conexión a PostgreSQL mediante variables de Azure
+# ==================================================
+# CONEXIÓN A POSTGRESQL
+# ==================================================
+
 def conectar_postgresql():
     return psycopg.connect(
         host=os.environ["DB_HOST"],
@@ -32,7 +39,10 @@ def conectar_postgresql():
     )
 
 
-# Página principal
+# ==================================================
+# 1. PÁGINA PRINCIPAL
+# ==================================================
+
 @app.get("/")
 async def root():
     return {
@@ -42,7 +52,10 @@ async def root():
     }
 
 
-# Verificación de la API
+# ==================================================
+# 2. ESTADO DE LA API
+# ==================================================
+
 @app.get("/health")
 async def health():
     return {
@@ -51,7 +64,10 @@ async def health():
     }
 
 
-# Verificación de PostgreSQL
+# ==================================================
+# 3. ESTADO DE POSTGRESQL
+# ==================================================
+
 @app.get("/db-health")
 def db_health():
     try:
@@ -81,33 +97,32 @@ def db_health():
         )
 
 
-# Módulo de empresas
+# ==================================================
+# 4. MÓDULO DE EMPRESAS
+# ==================================================
+
 @app.get("/empresas")
 def listar_empresas():
     try:
         with conectar_postgresql() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    """
+                cur.execute("""
                     SELECT id, nombre
                     FROM public.empresas
                     ORDER BY id
-                    """
-                )
+                """)
                 registros = cur.fetchall()
-
-        empresas = [
-            {
-                "id": fila[0],
-                "nombre": fila[1]
-            }
-            for fila in registros
-        ]
 
         return {
             "plataforma": "SAPHI Chile",
-            "total_empresas": len(empresas),
-            "empresas": empresas
+            "total_empresas": len(registros),
+            "empresas": [
+                {
+                    "id": fila[0],
+                    "nombre": fila[1]
+                }
+                for fila in registros
+            ]
         }
 
     except Exception:
@@ -115,4 +130,48 @@ def listar_empresas():
         raise HTTPException(
             status_code=503,
             detail="No fue posible consultar las empresas"
+        )
+
+
+# ==================================================
+# 5. MÓDULO DE PREDIOS AGRÍCOLAS
+# ==================================================
+
+@app.get("/predios")
+def listar_predios():
+    try:
+        with conectar_postgresql() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT
+                        p.id,
+                        p.nombre,
+                        p.empresa_id,
+                        e.nombre AS empresa
+                    FROM public.predios AS p
+                    LEFT JOIN public.empresas AS e
+                        ON p.empresa_id = e.id
+                    ORDER BY p.id
+                """)
+                registros = cur.fetchall()
+
+        return {
+            "plataforma": "SAPHI Chile",
+            "total_predios": len(registros),
+            "predios": [
+                {
+                    "id": fila[0],
+                    "nombre": fila[1],
+                    "empresa_id": fila[2],
+                    "empresa": fila[3]
+                }
+                for fila in registros
+            ]
+        }
+
+    except Exception:
+        logger.exception("Error al consultar predios")
+        raise HTTPException(
+            status_code=503,
+            detail="No fue posible consultar los predios"
         )
