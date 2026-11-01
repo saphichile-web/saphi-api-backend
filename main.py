@@ -74,3 +74,36 @@ def db_health():
             status_code=503,
             detail="Error interno al verificar PostgreSQL"
         )
+        @app.get("/empresas")
+def listar_empresas():
+    try:
+        with psycopg.connect(
+            host=os.environ["DB_HOST"],
+            dbname=os.environ["DB_NAME"],
+            user=os.environ["DB_USER"],
+            password=os.environ["DB_PASSWORD"],
+            port=int(os.environ.get("DB_PORT", "5432")),
+            sslmode=os.environ.get("DB_SSLMODE", "require"),
+            connect_timeout=10
+        ) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id, nombre FROM public.empresas ORDER BY id"
+                )
+                registros = cur.fetchall()
+
+        return {
+            "plataforma": "SAPHI Chile",
+            "total_empresas": len(registros),
+            "empresas": [
+                {"id": fila[0], "nombre": fila[1]}
+                for fila in registros
+            ]
+        }
+
+    except Exception:
+        logger.exception("Error al consultar empresas")
+        raise HTTPException(
+            status_code=503,
+            detail="No fue posible consultar las empresas"
+        )
