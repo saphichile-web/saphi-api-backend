@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SAPHI Chile | Dashboard AgronÃ³mico</title>
+    <title>SAPHI Chile | Dashboard Agronómico</title>
 
     <style>
         * { box-sizing: border-box; }
@@ -94,7 +94,7 @@
             cursor: pointer;
         }
 
-        /* GrÃ¡ficos histÃ³ricos: SVG adaptable, sin dependencias externas */
+        /* Gráficos históricos: SVG adaptable, sin dependencias externas */
         .graficos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 350px), 1fr)); gap: 20px; }
         .grafico { min-width: 0; }
         .grafico h3 { margin-bottom: 6px; }
@@ -111,16 +111,16 @@
 <header>
     <h1>SAPHI CHILE</h1>
     <p>
-        Plataforma de Inteligencia AgronÃ³mica
-        y RegeneraciÃ³n de Suelos
+        Plataforma de Inteligencia Agronómica
+        y Regeneración de Suelos
     </p>
 </header>
 
 <main>
 
     <div class="titulo">
-        <h2>Dashboard AgronÃ³mico</h2>
-        <p>Monitoreo de suelo, sensores IoT y predios agrÃ­colas</p>
+        <h2>Dashboard Agronómico</h2>
+        <p>Monitoreo de suelo, sensores IoT y predios agrícolas</p>
         <button onclick="cargarDatos()">Actualizar datos</button>
         <p id="conexion" class="nota">Conectando con Azure...</p>
     </div>
@@ -133,7 +133,7 @@
         </div>
 
         <div class="card">
-            <h3>Predios agrÃ­colas</h3>
+            <h3>Predios agrícolas</h3>
             <div class="valor" id="predios">--</div>
         </div>
 
@@ -153,7 +153,7 @@
         </div>
 
         <div class="card">
-            <h3>Conductividad elÃ©ctrica</h3>
+            <h3>Conductividad eléctrica</h3>
             <div class="valor" id="conductividad">--</div>
         </div>
 
@@ -162,7 +162,7 @@
     <div class="grid seccion">
 
         <div class="card">
-            <h3>InformaciÃ³n del predio</h3>
+            <h3>Información del predio</h3>
             <div class="detalle">
                 <strong>Empresa:</strong>
                 <span id="empresa_nombre">--</span><br>
@@ -187,7 +187,7 @@
         </div>
 
         <div class="card">
-            <h3>Ãšltima mediciÃ³n</h3>
+            <h3>Última medición</h3>
             <div class="detalle">
                 <span class="estado">Datos demostrativos</span>
                 <p id="fecha_medicion">--</p>
@@ -198,30 +198,30 @@
 
 
     <section class="seccion" aria-labelledby="titulo-historial">
-        <h2 id="titulo-historial">EvoluciÃ³n histÃ³rica del suelo</h2>
+        <h2 id="titulo-historial">Evolución histórica del suelo</h2>
         <p class="nota">Series temporales de datos demostrativos almacenados en PostgreSQL. No corresponden a mediciones IoT en tiempo real.</p>
         <p id="estado_historial" class="nota" role="status">Cargando historial...</p>
         <div class="graficos">
             <div class="card grafico">
                 <h3>Humedad del suelo a 30 cm</h3>
-                <p class="subtitulo">Contenido volumÃ©trico registrado (%)</p>
+                <p class="subtitulo">Contenido volumétrico registrado (%)</p>
                 <div id="grafico_humedad" class="mensaje-grafico">Cargando...</div>
             </div>
             <div class="card grafico">
                 <h3>Temperatura del suelo</h3>
-                <p class="subtitulo">Temperatura registrada (Â°C)</p>
+                <p class="subtitulo">Temperatura registrada (°C)</p>
                 <div id="grafico_temperatura" class="mensaje-grafico">Cargando...</div>
             </div>
             <div class="card grafico">
-                <h3>Conductividad elÃ©ctrica</h3>
-                <p class="subtitulo">Unidad de mediciÃ³n pendiente de confirmar</p>
+                <h3>Conductividad eléctrica</h3>
+                <p class="subtitulo">Unidad de medición pendiente de confirmar</p>
                 <div id="grafico_conductividad" class="mensaje-grafico">Cargando...</div>
             </div>
         </div>
     </section>
 
     <p class="nota">
-        SAPHI Chile SpA | DemostraciÃ³n funcional.
+        SAPHI Chile SpA | Demostración funcional.
         Los registros actuales corresponden a datos de prueba.
         No representan mediciones IoT en tiempo real.
     </p>
@@ -250,7 +250,7 @@ async function consultar(ruta) {
 }
 
 
-// Dibuja series histÃ³ricas con SVG nativo, sin bibliotecas externas.
+// Dibuja series históricas con SVG nativo, sin bibliotecas externas.
 function dibujarSerie(id, registros, campo, unidad, color) {
     const contenedor = document.getElementById(id);
     const datos = registros
@@ -307,9 +307,9 @@ async function cargarHistorial() {
         const historial = await consultar("/telemetria/historial");
         const registros = Array.isArray(historial.mediciones) ? historial.mediciones : [];
         dibujarSerie("grafico_humedad", registros, "humedad_30cm", "%", "#287d60");
-        dibujarSerie("grafico_temperatura", registros, "temperatura_suelo", "Â°C", "#bd7738");
+        dibujarSerie("grafico_temperatura", registros, "temperatura_suelo", "°C", "#bd7738");
         dibujarSerie("grafico_conductividad", registros, "conductividad_electrica", "", "#5679aa");
-        mostrar("estado_historial", `${registros.length} mediciones histÃ³ricas consultadas Â· Datos demostrativos`);
+        mostrar("estado_historial", `${registros.length} mediciones históricas consultadas · Datos demostrativos`);
     } catch (error) {
         console.error("Error al cargar historial:", error);
         mostrar("estado_historial", "No se pudo consultar el historial: " + error.message);
@@ -371,7 +371,7 @@ async function cargarDatos() {
         mostrar(
             "temperatura",
             medicion?.temperatura_suelo != null
-                ? medicion.temperatura_suelo + " Â°C"
+                ? medicion.temperatura_suelo + " °C"
                 : "--"
         );
 
