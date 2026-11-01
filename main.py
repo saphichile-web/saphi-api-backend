@@ -1,5 +1,6 @@
-
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from pathlib import Path
 import os
 import logging
 import psycopg
@@ -19,7 +20,6 @@ app = FastAPI(
 )
 
 DEVICE_CONNECTION_STRING = os.getenv("DEVICE_CONNECTION_STRING")
-
 
 # ==================================================
 # CONEXIÓN A POSTGRESQL
@@ -229,7 +229,7 @@ def listar_telemetria():
 
 
 # ==================================================
-# 7. NUEVO MÓDULO DE SENSORES IoT
+# 7. MÓDULO DE SENSORES IoT
 # ==================================================
 
 @app.get("/sensores")
@@ -285,3 +285,22 @@ def listar_sensores():
         )
 
 
+# ==================================================
+# 8. DASHBOARD AGRONÓMICO SAPHI CHILE
+# ==================================================
+
+@app.get("/dashboard", include_in_schema=False)
+def dashboard():
+    archivo = Path(__file__).resolve().parent / "dashboard.html"
+
+    if not archivo.is_file():
+        logger.error("No se encontró dashboard.html")
+        raise HTTPException(
+            status_code=404,
+            detail="Dashboard no disponible"
+        )
+
+    return FileResponse(
+        archivo,
+        media_type="text/html"
+    )
