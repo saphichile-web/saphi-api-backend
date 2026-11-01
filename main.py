@@ -1,6 +1,5 @@
 
 from fastapi import FastAPI, HTTPException
-from datetime import datetime
 import os
 import logging
 import psycopg
@@ -8,7 +7,6 @@ import psycopg
 # ==================================================
 # SAPHI CHILE - PLATAFORMA AGTECH
 # Backend FastAPI + PostgreSQL + Microsoft Azure
-# Versión 1.0.0
 # ==================================================
 
 logging.basicConfig(level=logging.INFO)
@@ -20,7 +18,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configuración de Azure IoT Hub
 DEVICE_CONNECTION_STRING = os.getenv("DEVICE_CONNECTION_STRING")
 
 
@@ -54,7 +51,7 @@ async def root():
 
 
 # ==================================================
-# 2. ESTADO DE LA API
+# 2. SALUD DE LA API
 # ==================================================
 
 @app.get("/health")
@@ -66,7 +63,7 @@ async def health():
 
 
 # ==================================================
-# 3. ESTADO DE POSTGRESQL
+# 3. CONEXIÓN CON POSTGRESQL
 # ==================================================
 
 @app.get("/db-health")
@@ -83,18 +80,11 @@ def db_health():
             "platform": "SAPHI Chile"
         }
 
-    except psycopg.OperationalError:
-        logger.exception("Error de conexión con PostgreSQL")
-        raise HTTPException(
-            status_code=503,
-            detail="Error de conexión con PostgreSQL"
-        )
-
     except Exception:
         logger.exception("Error al verificar PostgreSQL")
         raise HTTPException(
             status_code=503,
-            detail="Error interno al verificar PostgreSQL"
+            detail="Error de conexión con PostgreSQL"
         )
 
 
@@ -236,4 +226,62 @@ def listar_telemetria():
             status_code=503,
             detail="No fue posible consultar la telemetría del suelo"
         )
+
+
+# ==================================================
+# 7. NUEVO MÓDULO DE SENSORES IoT
+# ==================================================
+
+@app.get("/sensores")
+def listar_sensores():
+    try:
+        with conectar_postgresql() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT
+                        id,
+                        codigo_sensor,
+                        tipo_sensor,
+                        fabricante,
+                        modelo,
+                        cuartel_id,
+                        profundidad_cm,
+                        fecha_instalacion,
+                        estado
+                    FROM public.sensores
+                    ORDER BY id
+                """)
+                registros = cur.fetchall()
+
+        sensores = [
+            {
+                "id": fila[0],
+                "codigo_sensor": fila[1],
+                "tipo_sensor": fila[2],
+                "fabricante": fila[3],
+                "modelo": fila[4],
+                "cuartel_id": fila[5],
+                "profundidad_cm": float(fila[6])
+                if fila[6] is not None else None,
+                "fecha_instalacion": fila[7].isoformat()
+                if fila[7] is not None else None,
+                "estado": fila[8]
+            }
+            for fila in registros
+        ]
+
+        return {
+            "plataforma": "SAPHI Chile",
+            "modulo": "Sensores IoT",
+            "total_sensores": len(sensores),
+            "sensores": sensores
+        }
+
+    except Exception:
+        logger.exception("Error al consultar sensores")
+        raise HTTPException(
+            status_code=503,
+            detail="No fue posible consultar los sensores"
+        )
+
 
