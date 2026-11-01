@@ -307,7 +307,27 @@
             <p class="nota">Registro: <span id="diag_fecha">--</span> · Datos demostrativos</p>
         </div>
         <div class="modulos-grid seccion">
-            <div class="card modulo-card"><span class="etiqueta-pendiente">Pendiente de integración</span><h3>Análisis físico-químico</h3><p class="nota">pH, materia orgánica, N, P, K, densidad aparente y parámetros de laboratorio. Sin resultados disponibles todavía.</p></div>
+            <div class="card modulo-card" id="panel_fisicoquimico">
+                <span class="etiqueta-pendiente etiqueta-activo">Conectado a PostgreSQL · Datos demostrativos</span>
+                <h3>Análisis fisicoquímico del suelo</h3>
+                <p class="nota" id="estado_fisicoquimico" role="status">Consultando análisis...</p>
+                <div class="diagnostico-grid">
+                    <div class="diagnostico-campo"><small>Cuartel</small><strong id="fis_cuartel">--</strong></div>
+                    <div class="diagnostico-campo"><small>pH en agua</small><strong id="fis_ph">--</strong></div>
+                    <div class="diagnostico-campo"><small>Conductividad (dS/m)</small><strong id="fis_ce">--</strong></div>
+                    <div class="diagnostico-campo"><small>Materia orgánica (%)</small><strong id="fis_mo">--</strong></div>
+                    <div class="diagnostico-campo"><small>Nitrógeno (mg/kg)</small><strong id="fis_n">--</strong></div>
+                    <div class="diagnostico-campo"><small>Fósforo (mg/kg)</small><strong id="fis_p">--</strong></div>
+                    <div class="diagnostico-campo"><small>Potasio (mg/kg)</small><strong id="fis_k">--</strong></div>
+                    <div class="diagnostico-campo"><small>Densidad aparente (g/cm³)</small><strong id="fis_densidad">--</strong></div>
+                    <div class="diagnostico-campo"><small>Profundidad de muestreo (cm)</small><strong id="fis_profundidad">--</strong></div>
+                    <div class="diagnostico-campo"><small>Laboratorio</small><strong id="fis_laboratorio">--</strong></div>
+                    <div class="diagnostico-campo"><small>Fecha de análisis</small><strong id="fis_fecha">--</strong></div>
+                </div>
+                <p class="nota"><strong>Método analítico:</strong> <span id="fis_metodo">--</span></p>
+                <p class="nota"><strong>Observaciones:</strong> <span id="fis_observaciones">--</span></p>
+                <p class="aviso-demo">Valores de demostración, no resultados de laboratorio certificados. No utilizarlos para recomendaciones agronómicas.</p>
+            </div>
             <div class="card modulo-card"><span class="etiqueta-pendiente">Pendiente de integración</span><h3>Biología y regeneración</h3><p class="nota">Cobertura vegetal, indicadores biológicos, carbono orgánico y evolución del suelo. Requiere protocolos y mediciones validadas.</p></div>
             <div class="card modulo-card"><span class="etiqueta-pendiente">Diseño preliminar</span><h3>Gestión hídrica</h3><p class="nota">El historial de humedad a 30 cm se muestra en Monitoreo IoT. Las decisiones de riego requieren calibración y datos adicionales.</p></div>
         </div>
@@ -485,11 +505,47 @@ async function cargarDiagnostico() {
     }
 }
 
+// Consulta el análisis fisicoquímico registrado en PostgreSQL (datos de demostración).
+async function cargarAnalisisFisicoquimico() {
+    const ids = ["fis_cuartel", "fis_ph", "fis_ce", "fis_mo", "fis_n", "fis_p", "fis_k", "fis_densidad", "fis_profundidad", "fis_laboratorio", "fis_fecha", "fis_metodo", "fis_observaciones"];
+    for (const id of ids) mostrar(id, "--");
+    mostrar("estado_fisicoquimico", "Consultando análisis fisicoquímicos...");
+    try {
+        const respuesta = await consultar("/analisis-fisicoquimico");
+        const registros = Array.isArray(respuesta.analisis) ? respuesta.analisis : [];
+        const a = registros[0];
+        if (!a) {
+            mostrar("estado_fisicoquimico", "Sin análisis fisicoquímicos registrados.");
+            return;
+        }
+        const numero = (valor, unidad = "") => valor == null ? "--" : String(valor) + unidad;
+        mostrar("fis_cuartel", a.nombre_cuartel);
+        mostrar("fis_ph", numero(a.ph_agua));
+        mostrar("fis_ce", numero(a.conductividad_ds_m));
+        mostrar("fis_mo", numero(a.materia_organica_pct, " %"));
+        mostrar("fis_n", numero(a.nitrogeno_mg_kg));
+        mostrar("fis_p", numero(a.fosforo_mg_kg));
+        mostrar("fis_k", numero(a.potasio_mg_kg));
+        mostrar("fis_densidad", numero(a.densidad_aparente_g_cm3));
+        mostrar("fis_profundidad", numero(a.profundidad_muestreo_cm, " cm"));
+        mostrar("fis_laboratorio", a.laboratorio);
+        mostrar("fis_metodo", a.metodo_analitico);
+        mostrar("fis_observaciones", a.observaciones);
+        const fecha = a.fecha ? new Date(a.fecha + "T12:00:00") : null;
+        mostrar("fis_fecha", fecha && !Number.isNaN(fecha.getTime()) ? fecha.toLocaleDateString("es-CL") : "--");
+        mostrar("estado_fisicoquimico", `${registros.length} análisis consultado(s) · Datos demostrativos`);
+    } catch (error) {
+        console.error("Error consultando análisis fisicoquímico:", error);
+        mostrar("estado_fisicoquimico", "Análisis no disponible: " + error.message);
+    }
+}
+
 async function cargarDatos() {
 
     mostrar("conexion", "Consultando PostgreSQL mediante Azure...");
     cargarHistorial();
     cargarDiagnostico();
+    cargarAnalisisFisicoquimico();
 
     try {
 
