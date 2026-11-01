@@ -1,5 +1,6 @@
 
 from fastapi import FastAPI, HTTPException
+from datetime import datetime
 import os
 import logging
 import psycopg
@@ -175,3 +176,64 @@ def listar_predios():
             status_code=503,
             detail="No fue posible consultar los predios"
         )
+
+
+# ==================================================
+# 6. MÓDULO DE TELEMETRÍA DEL SUELO
+# ==================================================
+
+@app.get("/telemetria")
+def listar_telemetria():
+    try:
+        with conectar_postgresql() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT
+                        "timestamp",
+                        sensor_id,
+                        cuartel_id,
+                        humedad_10cm,
+                        humedad_30cm,
+                        humedad_60cm,
+                        temperatura_suelo,
+                        conductividad_electrica
+                    FROM public."telemetria suelo"
+                    ORDER BY "timestamp" DESC
+                    LIMIT 10
+                """)
+                registros = cur.fetchall()
+
+        mediciones = [
+            {
+                "timestamp": fila[0].isoformat()
+                if fila[0] is not None else None,
+                "sensor_id": fila[1],
+                "cuartel_id": fila[2],
+                "humedad_10cm": float(fila[3])
+                if fila[3] is not None else None,
+                "humedad_30cm": float(fila[4])
+                if fila[4] is not None else None,
+                "humedad_60cm": float(fila[5])
+                if fila[5] is not None else None,
+                "temperatura_suelo": float(fila[6])
+                if fila[6] is not None else None,
+                "conductividad_electrica": float(fila[7])
+                if fila[7] is not None else None
+            }
+            for fila in registros
+        ]
+
+        return {
+            "plataforma": "SAPHI Chile",
+            "modulo": "Telemetría del suelo",
+            "total_mediciones": len(mediciones),
+            "mediciones": mediciones
+        }
+
+    except Exception:
+        logger.exception("Error al consultar telemetría")
+        raise HTTPException(
+            status_code=503,
+            detail="No fue posible consultar la telemetría del suelo"
+        )
+
