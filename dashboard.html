@@ -6,6 +6,7 @@
     <title>SAPHI Chile | Dashboard Agronómico</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+    <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.css">
     <style>
         * { box-sizing: border-box; }
 
@@ -134,6 +135,16 @@
         .aviso-demo { border-left:4px solid #bc9148; padding:12px 16px; background:#fff9ec; font-size:13px; line-height:1.6; }
         #mapa_portezuelo { height: 430px; width: 100%; border-radius: 10px; background: #e6ede8; }
         .mapa-controles { display:flex; flex-wrap:wrap; gap:10px; margin:12px 0; }
+        .cuartel-panel { margin-top:18px; padding:18px; background:#f5f9f6; border:1px solid #dce8df; border-radius:10px; }
+        .cuartel-panel h4 { margin:0 0 8px; color:#214d3b; }
+        .cuartel-panel .mapa-controles button { font-size:13px; }
+        .cuartel-panel button:disabled { opacity:.5; cursor:not-allowed; }
+        .cuartel-datos { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin:12px 0; }
+        .cuartel-datos > div { background:white; border-radius:8px; padding:12px; }
+        .cuartel-datos small { display:block; color:#65756a; margin-bottom:5px; }
+        .cuartel-datos strong { color:#214d3b; }
+        .mapa-leyenda { font-size:12px; color:#65756a; line-height:1.5; }
+        @media (max-width:600px) { main {padding:15px;} #mapa_portezuelo {height:350px;} }
         @media print {
             .nav-modulos, button, .acciones-reporte, #conexion { display:none !important; }
             body { background:white; }
@@ -348,6 +359,24 @@
                 <button type="button" class="btn-secundario" onclick="centrarPortezuelo()">Centrar en Portezuelo</button>
             </div>
             <div id="mapa_portezuelo" role="region" aria-label="Mapa interactivo del sector de Portezuelo"></div>
+            <div class="cuartel-panel" aria-labelledby="titulo_editor_cuarteles">
+                <h4 id="titulo_editor_cuarteles">Editor de cuarteles agrícolas · Demostración</h4>
+                <p class="mapa-leyenda">Dibuja un polígono sobre la imagen. Haz clic en el primer punto para cerrarlo. Puedes editar sus vértices, eliminarlo o exportarlo. No dibujes límites de terceros como si fueran oficiales.</p>
+                <div class="mapa-controles">
+                    <button type="button" id="btn_dibujar_cuartel" onclick="dibujarCuartel()">Dibujar cuartel</button>
+                    <button type="button" class="btn-secundario" id="btn_editar_cuartel" onclick="editarCuartel()" disabled>Editar límites</button>
+                    <button type="button" class="btn-secundario" id="btn_terminar_edicion" onclick="terminarEdicionCuartel()" disabled>Finalizar edición</button>
+                    <button type="button" class="btn-secundario" id="btn_eliminar_cuartel" onclick="eliminarCuartel()" disabled>Eliminar cuartel</button>
+                    <button type="button" class="btn-secundario" id="btn_exportar_cuartel" onclick="exportarCuartel()" disabled>Exportar GeoJSON</button>
+                </div>
+                <div class="cuartel-datos">
+                    <div><small>Cuartel</small><strong id="cuartel_nombre">Sin delimitar</strong></div>
+                    <div><small>Superficie estimada</small><strong id="cuartel_superficie">-- ha</strong></div>
+                    <div><small>Vértices</small><strong id="cuartel_vertices">--</strong></div>
+                </div>
+                <p id="estado_cuartel" class="nota" role="status">Editor disponible al cargar el mapa.</p>
+                <p class="mapa-leyenda">Superficie geodésica aproximada, no válida para deslindes legales ni catastros. Los polígonos permanecen solo durante esta sesión del navegador; exporta el GeoJSON antes de recargar la página.</p>
+            </div>
             <p id="estado_mapa" class="nota" role="status">Cargando visor geográfico...</p>
             <p class="aviso-demo"><strong>Uso demostrativo:</strong> la imagen es una capa cartográfica de referencia provista por terceros, no un producto Sentinel-2 ni un índice NDVI. No se han incorporado límites prediales, geometrías PostGIS o datos de productores. La cobertura y fecha de captura de las imágenes pueden variar.</p>
         </div>
@@ -373,6 +402,7 @@
 </main>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.min.js"></script>
 <script>
 
 const API = window.location.origin;
@@ -672,7 +702,8 @@ function iniciarMapa() {
         L.circleMarker(CENTRO_PORTEZUELO, {
             radius: 7, color: "#214d3b", fillColor: "#ffffff", fillOpacity: 0.9, weight: 2
         }).addTo(mapaPortezuelo).bindPopup("Portezuelo (referencia geográfica aproximada). No corresponde a un predio piloto.");
-        estado.textContent = "Visor iniciado · ubicación de referencia aproximada · sin límites prediales.";
+        estado.textContent = "Visor iniciado · ubicación de referencia aproximada · sin límites prediales oficiales.";
+        iniciarEditorCuarteles();
         setTimeout(() => mapaPortezuelo.invalidateSize(), 250);
     } catch (error) {
         console.error("Error iniciando mapa:", error);
@@ -687,6 +718,121 @@ function cambiarCapaMapa(tipo) {
 function centrarPortezuelo() {
     if (mapaPortezuelo) mapaPortezuelo.setView(CENTRO_PORTEZUELO, 12);
 }
+// Editor de un cuartel demostrativo. No transmite geometrías a la API.
+let cuartelDibujado = null;
+let editorCuartelesActivo = false;
+function estadoCuartel(mensaje) { mostrar("estado_cuartel", mensaje); }
+function botonesCuartel() {
+    const hay = !!cuartelDibujado;
+    for (const id of ["btn_editar_cuartel", "btn_eliminar_cuartel", "btn_exportar_cuartel"]) {
+        document.getElementById(id).disabled = !hay;
+    }
+    document.getElementById("btn_terminar_edicion").disabled = !hay || !editorCuartelesActivo;
+    document.getElementById("btn_editar_cuartel").disabled = !hay || editorCuartelesActivo;
+}
+// Área geodésica aproximada en una esfera (WGS84, radio medio terrestre).
+function superficieAnilloM2(puntos) {
+    const R = 6371008.8;
+    let suma = 0;
+    if (puntos.length < 3) return 0;
+    for (let i = 0; i < puntos.length; i++) {
+        const a = puntos[i], b = puntos[(i + 1) % puntos.length];
+        const lon1 = a.lng * Math.PI / 180, lon2 = b.lng * Math.PI / 180;
+        const lat1 = a.lat * Math.PI / 180, lat2 = b.lat * Math.PI / 180;
+        let delta = lon2 - lon1;
+        if (delta > Math.PI) delta -= 2 * Math.PI;
+        if (delta < -Math.PI) delta += 2 * Math.PI;
+        suma += delta * (2 + Math.sin(lat1) + Math.sin(lat2));
+    }
+    return Math.abs(suma * R * R / 2);
+}
+function actualizarCuartel() {
+    if (!cuartelDibujado) {
+        mostrar("cuartel_nombre", "Sin delimitar");
+        mostrar("cuartel_superficie", "-- ha");
+        mostrar("cuartel_vertices", "--");
+        botonesCuartel();
+        return;
+    }
+    const anillos = cuartelDibujado.getLatLngs();
+    const exterior = anillos[0] || [];
+    const huecos = anillos.slice(1);
+    const m2 = Math.max(0, superficieAnilloM2(exterior) - huecos.reduce((s, h) => s + superficieAnilloM2(h), 0));
+    mostrar("cuartel_nombre", "Cuartel demostrativo 01");
+    mostrar("cuartel_superficie", (m2 / 10000).toLocaleString("es-CL", {maximumFractionDigits:3}) + " ha");
+    mostrar("cuartel_vertices", exterior.length);
+    botonesCuartel();
+}
+function iniciarEditorCuarteles() {
+    if (!mapaPortezuelo || !mapaPortezuelo.pm) {
+        estadoCuartel("No se pudo cargar el editor de polígonos. Revisa la conexión a Internet.");
+        document.getElementById("btn_dibujar_cuartel").disabled = true;
+        return;
+    }
+    mapaPortezuelo.pm.setLang("es");
+    mapaPortezuelo.on("pm:create", e => {
+        if (e.shape !== "Polygon") { mapaPortezuelo.removeLayer(e.layer); return; }
+        if (cuartelDibujado) {
+            cuartelDibujado.pm.disable();
+            mapaPortezuelo.removeLayer(cuartelDibujado);
+        }
+        cuartelDibujado = e.layer;
+        cuartelDibujado.setStyle({color:"#f5c451", weight:3, fillColor:"#f5c451", fillOpacity:.25});
+        cuartelDibujado.on("pm:edit", actualizarCuartel);
+        cuartelDibujado.on("pm:update", actualizarCuartel);
+        mapaPortezuelo.pm.disableDraw();
+        editorCuartelesActivo = false;
+        actualizarCuartel();
+        estadoCuartel("Cuartel dibujado. Superficie calculada; puedes editar o exportar sus límites.");
+    });
+    botonesCuartel();
+    estadoCuartel("Editor listo. Selecciona «Dibujar cuartel» para comenzar.");
+}
+function dibujarCuartel() {
+    if (!mapaPortezuelo?.pm) return;
+    terminarEdicionCuartel();
+    mapaPortezuelo.pm.enableDraw("Polygon", {snappable:true, snapDistance:15, allowSelfIntersection:false, pathOptions:{color:"#f5c451", weight:3, fillOpacity:.25}});
+    estadoCuartel("Haz clic para marcar los vértices; termina haciendo clic en el primer punto.");
+}
+function editarCuartel() {
+    if (!cuartelDibujado) return;
+    mapaPortezuelo.pm.disableDraw();
+    cuartelDibujado.pm.enable({allowSelfIntersection:false, snappable:true});
+    editorCuartelesActivo = true;
+    botonesCuartel();
+    estadoCuartel("Arrastra los vértices para ajustar los límites; luego presiona «Finalizar edición».");
+}
+function terminarEdicionCuartel() {
+    if (cuartelDibujado) cuartelDibujado.pm.disable();
+    editorCuartelesActivo = false;
+    actualizarCuartel();
+}
+function eliminarCuartel() {
+    if (!cuartelDibujado) return;
+    mapaPortezuelo.pm.disableDraw();
+    terminarEdicionCuartel();
+    mapaPortezuelo.removeLayer(cuartelDibujado);
+    cuartelDibujado = null;
+    actualizarCuartel();
+    estadoCuartel("Polígono eliminado del mapa. No se modificó PostgreSQL.");
+}
+function exportarCuartel() {
+    if (!cuartelDibujado) return;
+    terminarEdicionCuartel();
+    const feature = cuartelDibujado.toGeoJSON();
+    feature.properties = {nombre:"Cuartel demostrativo 01", tipo_dato:"demostrativo", sector:"Portezuelo, Ñuble", superficie_ha_aproximada:Number((superficieAnilloM2(cuartelDibujado.getLatLngs()[0]) / 10000).toFixed(4))};
+    const contenido = JSON.stringify({type:"FeatureCollection", features:[feature]}, null, 2);
+    const url = URL.createObjectURL(new Blob([contenido], {type:"application/geo+json"}));
+    const enlace = document.createElement("a");
+    enlace.href = url;
+    enlace.download = "saphi_cuartel_demostrativo_portezuelo.geojson";
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    estadoCuartel("Archivo GeoJSON generado. Guárdalo para conservar el polígono.");
+}
+
 window.addEventListener("load", iniciarMapa);
 
 cargarDatos();
